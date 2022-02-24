@@ -8,7 +8,7 @@ import pygame
 import math
 
 class Environment:
-    def __init__(self, dimensions):
+    def __init__(self, dimensions, bg):
         # color variables
         self.black  = (0, 0, 0)
         self.white  = (255, 255, 255)
@@ -17,18 +17,21 @@ class Environment:
         self.red    = (255, 0, 0)
         self.yellow = (255, 255, 0)
 
-        # map dimensions
+        # screen dimensions
         self.height = dimensions[0]
         self.width  = dimensions[1]
 
+        # background
+        self.bg_img = bg
+
         # window settings
         pygame.display.set_caption("Differential Drive Car Simulation")
-        self.map = pygame.display.set_mode((self.width, self.height))
+        self.screen = pygame.display.set_mode((self.width, self.height))
 
     def add_bg(self):
-        self.bg = pygame.image.load('bg1.jpg')
+        self.bg = pygame.image.load(self.bg_img)
         #self.rect = self.bg.get_rect()
-        self.map.blit(self.bg, (0, 0))
+        self.screen.blit(self.bg, (0, 0))
 
 class Car:
     def __init__(self, startpos, car_img, width):
@@ -51,8 +54,8 @@ class Car:
         self.rotated = self.image
         self.rect = self.rotated.get_rect(center=(self.x, self.y))
 
-    def draw(self, map):
-        map.blit(self.rotated, self)
+    def draw(self, screen):
+        screen.blit(self.rotated, self)
 
     def move(self, dt, event=None):
         if event is not None:
@@ -68,10 +71,12 @@ class Car:
                 if event.key == pygame.K_UP:
                     self.velocity_l += 0.001*self.meter2pixel
                     self.velocity_r += 0.001*self.meter2pixel
+                    self.last_forward_velocity += 0.001*self.meter2pixel
 
                 if event.key == pygame.K_DOWN:
-                    self.velocity_l -= 0.001*self.meter2pixel
-                    self.velocity_r -= 0.001*self.meter2pixel
+                    self.velocity_l -= 0.003*self.meter2pixel
+                    self.velocity_r -= 0.003*self.meter2pixel
+                    self.last_forward_velocity -= 0.003*self.meter2pixel
 
                 if event.key == pygame.K_e:
                     self.velocity_l = 0.00
@@ -80,12 +85,22 @@ class Car:
             diff = self.velocity_l - self.velocity_r
             print('Last Forward Velocity', self.last_forward_velocity, "Difference: ", diff, "Left ", self.velocity_l, "Right ", self.velocity_r)
 
-            if diff != 0:
-                if diff< 0 and self.velocity_l < self.last_forward_velocity:
+            if diff < -2 or diff > 2:
+                if self.velocity_l < self.last_forward_velocity:
                     self.velocity_l += 0.3
                 
-                if diff>0 and self.velocity_r < self.last_forward_velocity:
+                if self.velocity_l > self.last_forward_velocity:
+                    self.velocity_l -= 0.3
+                
+                if self.velocity_r < self.last_forward_velocity:
                     self.velocity_r += 0.3
+
+                if self.velocity_r > self.last_forward_velocity:
+                    self.velocity_r -= 0.3
+                
+            elif diff > -1 or diff < 1:
+                self.velocity_r = self.last_forward_velocity
+                self.velocity_l = self.last_forward_velocity
 
         if self.velocity_l == self.velocity_r:
             self.last_forward_velocity = self.velocity_l
@@ -112,8 +127,8 @@ lasttime = pygame.time.get_ticks()
 # init things here
 pygame.init()
 pygame.key.set_repeat(100)
-environment = Environment(dimension)
-car = Car(start, 'car2.png', 0.01*3779.52)
+environment = Environment(dimension, 'resources/bg1.jpg')
+car = Car(start, 'resources/car.png', 0.01*3779.52)
 
 
 # simulation loop
@@ -132,4 +147,4 @@ while running:
     pygame.display.update()
     environment.add_bg()
     car.move(dt)
-    car.draw(environment.map)
+    car.draw(environment.screen)
